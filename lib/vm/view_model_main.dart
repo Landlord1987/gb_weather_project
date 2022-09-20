@@ -2,24 +2,30 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:gb_weather_project/entity/weather.dart';
+import 'package:gb_weather_project/vm/hive_db.dart';
+import 'package:gb_weather_project/vm/repository.dart';
 
 import '../api.dart';
 
 class ViewModelMain extends ChangeNotifier {
-  ViewModelMain(this.service) {
-    _init();
+  ViewModelMain(this.repository){
+    repository.db.init().then((value) => Future.delayed(Duration.zero, show));
   }
-
-  Future<void> _init() async {
+  final SharedRepository repository;
+  MainState? _state;
+  Future<void> getData() async {
     _state = MainState(null, LoadingState.loading);
     notifyListeners();
-    final data = await service.getWeather();
+    await repository.updateData();
+    _state = _state?.copy(response: null, isLoading: LoadingState.initial);
+    notifyListeners();
+  }
+  Future<void> show() async {
+    _state = MainState(null, LoadingState.loading);
+    var data = repository.getFromDb();
     _state = _state?.copy(response: data, isLoading: LoadingState.initial);
     notifyListeners();
   }
-
-  final ApiService service;
-  MainState? _state;
 
   MainState? get currentState => _state;
 }
@@ -33,5 +39,5 @@ class MainState {
   MainState(this.response, this.isLoading);
 
   MainState copy({WeatherResponse? response, LoadingState? isLoading}) =>
-      MainState(response ?? this.response, this.isLoading);
+      MainState(response ?? this.response, isLoading ?? this.isLoading);
 }
